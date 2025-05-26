@@ -35,3 +35,7 @@
 - name: swlib | gcscopy
   include_tasks: gcscopy.yml
   when: swlib_mount_type == "gcs"
+
+- name: swlib | azcopy
+  include_tasks: azcopy.yml
+  when: swlib_mount_type == "az"
