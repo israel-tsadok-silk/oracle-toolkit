@@ -415,18 +415,18 @@
   changed_when: "'Writing disk header: done' in asmraw.stdout"
   tags: asm-disks
 
-- name: (asmlib) Create Oracle ASM LV disks
-  become: true
-  become_user: root
-  command: "/usr/sbin/oracleasm createdisk -v {{ item.1.name }} {{ item.1.blk_device }}{% if item.1.name is not search('mapper') %}{{ item.1.first_partition_id }}{% endif %}"
-  with_subelements:
-    - "{{ asm_disks }}"
-    - disks
-  when: asm_disk_management == "asmlib"
-  register: asmlv
-  failed_when: "( ( asmlv.rc != 0 ) and ( 'ERROR' in asmlv.stdout ) ) or ( ( asmlv.rc != 0 ) and ( 'is already labeled for ASM disk' not in asmlv.stdout ) )"
-  changed_when: "'Writing disk header: done' in asmlv.stdout"
-  tags: asm-disks
+# - name: (asmlib) Create Oracle ASM LV disks
+#   become: true
+#   become_user: root
+#   command: "/usr/sbin/oracleasm createdisk -v {{ item.1.name }} {{ item.1.blk_device }}{% if item.1.name is not search('mapper') %}{{ item.1.first_partition_id }}{% endif %}"
+#   with_subelements:
+#     - "{{ asm_disks }}"
+#     - disks
+#   when: asm_disk_management == "asmlib"
+#   register: asmlv
+#   failed_when: "( ( asmlv.rc != 0 ) and ( 'ERROR' in asmlv.stdout ) ) or ( ( asmlv.rc != 0 ) and ( 'is already labeled for ASM disk' not in asmlv.stdout ) )"
+#   changed_when: "'Writing disk header: done' in asmlv.stdout"
+#   tags: asm-disks
 
 - name: (asmlib) List ASM disks
   become: true
