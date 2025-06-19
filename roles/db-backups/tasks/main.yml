@@ -68,7 +68,7 @@
   with_items:
     - { level: 0, days: '{{ full_bu_level0_day }}' }
     - { level: 1, days: '{{ full_bu_level1_days }}' }
-  when: backup_dest | bool
+  when: backup_dest
   tags: db-backups,add-backups
 
 - name: Schedule archived redo log backups
@@ -79,7 +79,7 @@
     minute: "{{ arch_bu_start_min }}"
     user: "{{ oracle_user }}"
     job: "{{ scripts_dir }}/rman_arch_backup.sh {{ oracle_sid }} {{ rman_arch_redundancy }} {{ rman_archs_online_days }}"
-  when: backup_dest|bool
+  when: backup_dest
   tags: db-backups,add-backups
 
 - name: Schedule archivelog deletion when no backups are configured
@@ -90,7 +90,7 @@
     minute: "{{ arch_bu_start_min }}"
     user: "{{ oracle_user }}"
     job: "{{ scripts_dir }}/rman_delete_arch.sh {{ oracle_sid }} {{ rman_arch_retention_hours }}"
-  when: not (backup_dest|bool)
+  when: not backup_dest
   tags: db-backups,add-backups
 
 - name: Run initial full backup
