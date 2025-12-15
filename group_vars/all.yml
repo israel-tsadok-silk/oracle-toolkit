@@ -22,15 +22,17 @@ swlib_unzip_path: "{{ lookup('env','ORA_STAGING')|lower|default(swlib_path,true)
 swlib_mount_type: "{{ lookup('env','ORA_SWLIB_TYPE')|lower|default('gcs',true) }}"  # absent for gcsfuse or nfs
 swlib_mount_src: "{{ lookup('env','ORA_SWLIB_BUCKET')|default('',true) | regex_replace ('^gs://') }}"
 swlib_gcs_service_account_file: "{{ lookup('env','ORA_SWLIB_CREDENTIALS')|default('',true) }}"
-swlib_path_default: "{{ oracle_user_data_mounts|selectattr('purpose', 'match', '^software$') | map(attribute='mount_point') | list | first }}/swlib"
+# Default swlib path - use /u01/swlib if no software mount is defined
+swlib_path_default: "{% set software_mounts = oracle_user_data_mounts | selectattr('purpose', 'match', '^software$') | map(attribute='mount_point') | list %}{% if software_mounts | length > 0 %}{{ software_mounts | first }}/swlib{% else %}/u01/swlib{% endif %}"
 
 # Installation related variables from dbasm
 oracle_user_data_mounts_default:
   - { purpose: software, blk_device: /dev/BOGUS, fstype: xfs, mount_point: /u01, mount_opts: "nofail" }
   - { purpose: diag, blk_device: /dev/BOGUS, fstype: xfs, mount_point: /u02, mount_opts: "nofail" }
 data_mounts_definition_file: "{{ lookup('env','ORA_DATA_MOUNTS')|default('data_mounts_config.json',true) }}"
-data_mounts_input: "{{ lookup('file',data_mounts_definition_file,errors='ignore') }}"
-oracle_user_data_mounts: "{{ data_mounts_input | default(oracle_user_data_mounts_default,true) }}"
+data_mounts_input_raw: "{{ lookup('file',data_mounts_definition_file,errors='ignore') | default('', true) | trim }}"
+# Initial value - will be overridden by populate-vars.yml set_fact if data_mounts_input_raw is valid JSON
+oracle_user_data_mounts: "{{ oracle_user_data_mounts_default }}"
 asm_disks_default:
   - diskgroup: "{{ data_destination }}"
     disks:
@@ -45,8 +47,9 @@ asm_disks_default:
       - name: DEMO1
         blk_device: /dev/BOGUS
 asm_definition_file: "{{ lookup('env','ORA_ASM_DISKS')|default('asm_disk_config.json',true) }}"
-asm_disk_input: "{{ lookup('file',asm_definition_file,errors='ignore') }}"
-asm_disks: "{% if free_edition %}[]{% else %}{{ asm_disk_input | default(asm_disks_default,true) }}{% endif %}"
+asm_disk_input_raw: "{{ lookup('file',asm_definition_file,errors='ignore') | default('', true) | trim }}"
+# Initial value - will be overridden by populate-vars.yml set_fact if asm_disk_input_raw is valid JSON
+asm_disks: "{% if free_edition %}[]{% else %}{{ asm_disks_default }}{% endif %}"
 
 ## The toolkit can optionally configure swap space
 # If your RAM size is less than or equal to 2 GB, your swap size should be 1.5 times of the RAM. For example, if your RAM size is 2 GB, you should create swap space of 3GB

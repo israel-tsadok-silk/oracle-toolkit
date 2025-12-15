@@ -13,6 +13,37 @@
 # limitations under the License.
 
 ---
+# Set data mounts from JSON input - Ansible auto-parses JSON from file lookup
+# Use the parsed value directly (even if empty list) instead of default with BOGUS devices
+- name: populate-vars | Set data mounts configuration from input
+  set_fact:
+    oracle_user_data_mounts: "{{ data_mounts_input_raw }}"
+  when:
+    - data_mounts_input_raw is defined
+    - data_mounts_input_raw is iterable
+    - data_mounts_input_raw is not string
+  tags: data-mounts
+
+# Set ASM disks from JSON input - Ansible auto-parses JSON from file lookup
+# Use the parsed value directly (even if empty list) instead of default with BOGUS devices
+- name: populate-vars | Set ASM disks configuration from input
+  set_fact:
+    asm_disks: "{{ asm_disk_input_raw }}"
+  when:
+    - not free_edition
+    - asm_disk_input_raw is defined
+    - asm_disk_input_raw is iterable
+    - asm_disk_input_raw is not string
+  tags: asm-disks
+
+- name: populate-vars | Debug data mounts and asm disks
+  debug:
+    msg:
+      - "oracle_user_data_mounts: {{ oracle_user_data_mounts }}"
+      - "asm_disks: {{ asm_disks }}"
+    verbosity: 1
+  tags: data-mounts,asm-disks
+
 - name: populate-vars | Resolve software release
   set_fact:
     oracle_rel: "{{ found_rel | trim }}"

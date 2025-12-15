@@ -258,6 +258,7 @@
 - name: (asmlib) | ASM device managment via asmlib or udev?
   debug:
     msg: "asm_disk_management is set to {{ asm_disk_management }}"
+  when: asm_disks | length > 0
   tags: asm-disks
 
 - name: Partition all ASM raw disks
@@ -266,7 +267,9 @@
     number: 1
     state: present
     label: gpt
-  when: "'mapper' not in item.1.blk_device"
+  when:
+    - asm_disks | length > 0
+    - "'mapper' not in item.1.blk_device"
   run_once: true
   with_subelements:
     - "{{ asm_disks }}"
@@ -276,13 +279,15 @@
 - include_role:
     name: common
     tasks_from: populate-asm-disks.yml
+  when: asm_disks | length > 0
 
 - name: (debug) asm disk configuration
   debug:
     msg:
       - asm_disks {{ asm_disks }}
       - asm_def_file {{ asm_definition_file }}
-      - asm_disk_input {{ asm_disk_input }}
+      - asm_disk_input {{ asm_disk_input_raw | default('') }}
+  when: asm_disks | length > 0
   tags: asm-disks
 
 ######## Udev rules for non-multipath disks ########
@@ -293,6 +298,7 @@
   shell: udevadm info --query=all --name={{ item.1.blk_device }} | grep ID_SERIAL_SHORT | awk -F'=' '{print $2}'
   register: udevadm_result_nonmultipath
   when:
+    - asm_disks | length > 0
     - asm_disk_management == "udev"
     - "'mapper' not in item.1.blk_device"
   with_subelements:
@@ -304,6 +310,7 @@
   set_fact:
     uuid_result_nonmultipath: []
   when:
+    - asm_disks | length > 0
     - udevadm_result_nonmultipath.results.0.stdout is defined
   tags: udev-mpath
 
@@ -311,6 +318,7 @@
   set_fact:
     uuid_result_nonmultipath: "{{ uuid_result_nonmultipath | combine({item.stdout: item.item}) }}"
   when:
+    - asm_disks | length > 0
     - udevadm_result_nonmultipath.results.0.stdout is defined
   with_items:
     - "{{ udevadm_result_nonmultipath.results }}"
@@ -326,6 +334,7 @@
     create: true
   register: udevRules_nonmultipath
   when:
+    - asm_disks | length > 0
     - uuid_result_nonmultipath is defined
   with_dict:
     - "{{ uuid_result_nonmultipath }}"
@@ -338,7 +347,9 @@
   become_user: root
   shell: udevadm info --query=all --name={{ item.1.blk_device }} | grep DM_UUID | awk -F'=' '{print $2}'
   register: udevadm_result
-  when: "'mapper' in item.1.blk_device"
+  when:
+    - asm_disks | length > 0
+    - "'mapper' in item.1.blk_device"
   with_subelements:
     - "{{ asm_disks }}"
     - disks
@@ -348,6 +359,7 @@
   set_fact:
     uuid_result: []
   when:
+    - asm_disks | length > 0
     - udevadm_result.results.0.stdout is defined
   tags: udev-mpath
 
@@ -355,6 +367,7 @@
   set_fact:
     uuid_result: "{{ uuid_result | combine({item.stdout: item.item}) }}"
   when:
+    - asm_disks | length > 0
     - udevadm_result.results.0.stdout is defined
   with_items:
     - "{{ udevadm_result.results }}"
@@ -370,6 +383,7 @@
     create: true
   register: udevRules
   when:
+    - asm_disks | length > 0
     - uuid_result is defined
   with_dict:
     - "{{ uuid_result }}"
@@ -379,6 +393,7 @@
   become: true
   become_user: root
   shell: ( /sbin/udevadm control --reload-rules && /sbin/udevadm trigger && /sbin/partprobe )
+  when: asm_disks | length > 0
   tags: asm-disks
 
 - name: (asmlib) Install Oracle ASM libraries
@@ -386,7 +401,9 @@
     name: "{{ oracleasm_libs }}"
     state: present
     lock_timeout: "{{ pkg_mgr_lock_timeout }}"
-  when: asm_disk_management == "asmlib"
+  when:
+    - asm_disks | length > 0
+    - asm_disk_management == "asmlib"
   tags: oracleasmlib
 
 - name: (asmlib) Configure oracleasm
@@ -399,7 +416,9 @@
     /usr/sbin/oracleasm scandisks
     cat /etc/sysconfig/oracleasm
   register: asmconfig
-  when: asm_disk_management == "asmlib"
+  when:
+    - asm_disks | length > 0
+    - asm_disk_management == "asmlib"
   tags: asm-disks
 
 - name: (asmlib) Create Oracle ASM raw disks
@@ -409,7 +428,9 @@
   with_subelements:
     - "{{ asm_disks }}"
     - disks
-  when: asm_disk_management == "asmlib"
+  when:
+    - asm_disks | length > 0
+    - asm_disk_management == "asmlib"
   register: asmraw
   failed_when: "( ( asmraw.rc != 0 ) and ( 'ERROR' in asmraw.stdout ) ) or ( ( asmraw.rc != 0 ) and ( 'is already labeled for ASM disk' not in asmraw.stdout ) )"
   changed_when: "'Writing disk header: done' in asmraw.stdout"
@@ -422,7 +443,9 @@
   with_subelements:
     - "{{ asm_disks }}"
     - disks
-  when: asm_disk_management == "asmlib"
+  when:
+    - asm_disks | length > 0
+    - asm_disk_management == "asmlib"
   register: asmlv
   failed_when: "( ( asmlv.rc != 0 ) and ( 'ERROR' in asmlv.stdout ) ) or ( ( asmlv.rc != 0 ) and ( 'is already labeled for ASM disk' not in asmlv.stdout ) )"
   changed_when: "'Writing disk header: done' in asmlv.stdout"
@@ -436,7 +459,9 @@
     /usr/sbin/oracleasm listdisks
     ls -l /dev/oracleasm/disks
   register: listdisks
-  when: asm_disk_management == "asmlib"
+  when:
+    - asm_disks | length > 0
+    - asm_disk_management == "asmlib"
   tags: asm-disks
 
 - name: (asmlib) Restart oracleasm
@@ -444,7 +469,9 @@
     state: restarted
     name: oracleasm
     scope: system
-  when: asm_disk_management == "asmlib"
+  when:
+    - asm_disks | length > 0
+    - asm_disk_management == "asmlib"
   tags: asm-disks
 
 - name: (asmlib) ASM listing results
@@ -455,5 +482,7 @@
   with_items:
     - "{{ asmconfig }}"
     - "{{ listdisks }}"
-  when: asm_disk_management == "asmlib"
+  when:
+    - asm_disks | length > 0
+    - asm_disk_management == "asmlib"
   tags: asm-disks

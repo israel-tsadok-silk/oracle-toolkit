@@ -13,13 +13,16 @@
 # limitations under the License.
 
 ---
+# Skip all storage tasks if oracle_user_data_mounts is empty (software-only install on existing filesystem)
 - name: Partition Oracle user mount devices
   parted:
     device: "{{ item.blk_device }}"
     number: 1
     state: present
     label: gpt
-  when: "'mapper' not in item.blk_device"
+  when:
+    - oracle_user_data_mounts | length > 0
+    - "'mapper' not in item.blk_device"
   with_items:
     - "{{ oracle_user_data_mounts }}"
   tags: ora-mounts
@@ -27,12 +30,15 @@
 - include_role:
     name: common
     tasks_from: populate-user-data-mounts.yml
+  when: oracle_user_data_mounts | length > 0
 
 - name: Add filesystem on Oracle user mount raw devices
   filesystem:
     fstype: "{{ item.fstype }}"
     dev: "{{ item.first_partition_id }}"
-  when: "'mapper' not in item.blk_device"
+  when:
+    - oracle_user_data_mounts | length > 0
+    - "'mapper' not in item.blk_device"
   with_items:
     - "{{ oracle_user_data_mounts }}"
   tags: ora-mounts
@@ -41,7 +47,9 @@
   filesystem:
     fstype: "{{ item.fstype }}"
     dev: "{{ item.blk_device }}"
-  when: "'mapper' in item.blk_device"
+  when:
+    - oracle_user_data_mounts | length > 0
+    - "'mapper' in item.blk_device"
   with_items:
     - "{{ oracle_user_data_mounts }}"
   tags: ora-mounts
@@ -53,7 +61,9 @@
     path: "{{ item.mount_point }}"
     opts: "{{ item.mount_opts }}"
     state: mounted
-  when: "'mapper' not in item.blk_device"
+  when:
+    - oracle_user_data_mounts | length > 0
+    - "'mapper' not in item.blk_device"
   with_items:
     - "{{ oracle_user_data_mounts }}"
   tags: ora-mounts
@@ -65,7 +75,9 @@
     path: "{{ item.mount_point }}"
     opts: "{{ item.mount_opts }}"
     state: mounted
-  when: "'mapper' in item.blk_device"
+  when:
+    - oracle_user_data_mounts | length > 0
+    - "'mapper' in item.blk_device"
   with_items:
     - "{{ oracle_user_data_mounts }}"
   tags: ora-mounts

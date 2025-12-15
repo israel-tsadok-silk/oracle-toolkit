@@ -64,10 +64,13 @@
   become: true
   become_user: "{{ grid_user }}"
   failed_when: asm_status.rc >= 2
+  when: asm_disks | length > 0
   tags: gi-setup,start-asm
 
 - include_tasks: asm-create.yml
-  when: '"ASM is running" not in asm_status.stdout'
+  when:
+    - asm_disks | length > 0
+    - '"ASM is running" not in asm_status.stdout'
   tags: gi-setup,start-asm
 
 - name: Check cluster resources
